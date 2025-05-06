@@ -17,25 +17,12 @@ case "$(uname)" in
 esac
 
 # ━━━━━━━ Dynamic Terminal Palette Reapply ━━━━━━━━━
-seqfile="${XDG_CACHE_HOME:-$HOME/.cache}/ags/user/generated/terminal/sequences.txt"
-
-# Define cat override globally
-if [[ -o interactive ]]; then
-  function cat() {
-    if [[ "$1" == "$seqfile" ]]; then
-      command cat "$@"
-    else
-      bat --paging=never "$@"
-    fi
-  }
-fi
-
 # Palette hook only for Linux
 if [[ "$(uname)" == "Linux" && -o interactive ]]; then
   autoload -Uz add-zsh-hook
   apply_palette() {
-    if [[ -r $seqfile ]]; then
-      IFS= read -r palette <"$seqfile"
+    if [[ -r $SEQFILE ]]; then
+      IFS= read -r palette <"$SEQFILE"
       printf '%b' "$palette"
     fi
   }
