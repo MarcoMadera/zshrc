@@ -41,6 +41,16 @@ n() {
   rm -f -- "$tmp"
 }
 
+cat() {
+  if [[ "$1" == "$SEQFILE" ]]; then
+    command cat "$@"
+  elif command -v bat &>/dev/null; then
+    bat --paging=never "$@"
+  else
+    command cat "$@"
+  fi
+}
+
 # ━━━━━━━ Directory Shortcuts ━━━━━━━━━
 mkcd() { mkdir -p "$1" && cd "$1" }
 
