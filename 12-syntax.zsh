@@ -4,10 +4,6 @@
 
 # ── Autosuggestions ──
 # Zinit handles this plugin in 03-zinit.zsh already,
-# but fallback in case it's not installed via Zinit
-if [[ -f ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
-  source ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-fi
 
 # Customize ghost suggestion color
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
@@ -15,11 +11,6 @@ ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
 # ── Syntax Highlighting ──
 # This plugin must be loaded **last**
 zinit light zsh-users/zsh-syntax-highlighting
-
-# Fallback if not using zinit
-if [[ -f ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]]; then
-  source ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-fi
 
 # Customize highlight styles
 ZSH_HIGHLIGHT_STYLES[alias]='fg=green,bold'
