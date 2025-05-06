@@ -1,0 +1,8 @@
+*.bak.*
+*.swp
+*~
+.zcompdump*
+.DS_Store
+*.log
+.cache/
+history
