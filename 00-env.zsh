@@ -14,3 +14,6 @@ export ZINIT_HOME="$XDG_DATA_HOME/zinit"
 export LANG=en_US.UTF-8
 export BAT_PAGER="less"
 export EDITOR="nvim"
+
+# ━━━━━━━ App-specific XDG Paths ━━━━━━━━━
+export SEQFILE="${XDG_CACHE_HOME}/ags/user/generated/terminal/sequences.txt"
