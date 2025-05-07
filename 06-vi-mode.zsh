@@ -1,18 +1,38 @@
 bindkey -v
+typeset -A MODE_STYLES
 
-# Default mode
-MODE="[%F{green}INSERT%f]"
+MODE_STYLES=(
+  "INSERT"  "cyan"
+  "NORMAL"  "yellow" 
+  "VISUAL"  "red"
+  "VIS-BK"  "magenta"
+)
 
-function update_mode_indicator {
-  if [[ $KEYMAP == vicmd && $REGION_ACTIVE == 1 ]]; then
-    MODE="[%F{magenta}VISUAL%f]"
-  elif [[ $KEYMAP == vicmd && $REGION_ACTIVE == 2 ]]; then
-    MODE="[%F{red}VIS-BK%f]"
-  elif [[ $KEYMAP == vicmd ]]; then
-    MODE="[%F{blue}NORMAL%f]"
+function format_mode_indicator() {
+  local mode_name="$1"
+  local color="${MODE_STYLES[$mode_name]}"
+  echo "%B%F{$color}%f%K{$color}%F{black}[$mode_name]%f%k%F{$color}%f%b"
+}
+
+MODE=$(format_mode_indicator "INSERT")
+
+function update_mode_indicator() {
+  local current_mode
+  
+  if [[ $KEYMAP == vicmd ]]; then
+    if [[ $REGION_ACTIVE == 1 ]]; then
+      current_mode="VISUAL"
+    elif [[ $REGION_ACTIVE == 2 ]]; then
+      current_mode="VIS-BK"
+    else
+      current_mode="NORMAL"
+    fi
   else
-    MODE="[%F{green}INSERT%f]"
+    current_mode="INSERT"
   fi
+  
+  MODE=$(format_mode_indicator "$current_mode")
+  
   zle reset-prompt 2>/dev/null || true
 }
 
@@ -24,4 +44,5 @@ function visual_to_insert {
 
 zle -N visual_to_insert
 zle -N zle-line-pre-redraw update_mode_indicator
+zle -N zle-keymap-select update_mode_indicator
 bindkey -M visual 'i' visual_to_insert 
