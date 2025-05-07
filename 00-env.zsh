@@ -17,4 +17,3 @@ export EDITOR="nvim"
 
 # ━━━━━━━ App-specific XDG Paths ━━━━━━━━━
 export SEQFILE="${XDG_CACHE_HOME}/ags/user/generated/terminal/sequences.txt"
-export PROMPT_RGB_FILE="${XDG_CACHE_HOME}/ags/user/generated/terminal/background_rgb.txt"
