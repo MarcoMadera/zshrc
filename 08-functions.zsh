@@ -23,6 +23,11 @@ y() {
 
 
 n() {
+  if [[ $# -eq 0 ]]; then
+    nvim
+    return
+  fi
+
   local tmp cwd
   tmp="$(mktemp -t "nvim-cwd.XXXXXX")"
   nvim "$@" -c "silent !pwd > $tmp" -c 'autocmd VimLeavePre * silent! !pwd > '"$tmp" -c 'autocmd VimLeave * qa!'
