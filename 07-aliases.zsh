@@ -12,6 +12,7 @@ alias gb='git branch'
 alias gf='git fetch'
 alias gr='git rebase'
 alias grs='git reset'
+alias lol="git log --oneline --graph --decorate"
 
 # ━━━━━━━ Navigation ━━━━━━━━━
 alias ..='cd ..'
@@ -32,3 +33,4 @@ alias reload='exec zsh'
 
 # ━━━━━━━ Utils ━━━━━━━━━
 alias myip='curl -s https://ipinfo.io/ip'
+alias ip='curl -s https://ipinfo.io/ip'
