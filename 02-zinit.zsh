@@ -14,3 +14,4 @@ zinit light zsh-users/zsh-autosuggestions
 zinit light hlissner/zsh-autopair
 zinit light zsh-users/zsh-history-substring-search
 zinit light Aloxaf/fzf-tab
+zinit light MichaelAquilina/zsh-you-should-use
