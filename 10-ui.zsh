@@ -10,12 +10,6 @@ if [[ -n "$SSH_CONNECTION" ]]; then
   PROMPT="%F{red}[SSH]%f $PROMPT"
 fi
 
-# ━━━━━━━ OS-specific Aliases ━━━━━━━━━
-case "$(uname)" in
-  Darwin) alias ls='ls -G' ;;
-  Linux)  alias ls='ls --color=auto' ;;
-esac
-
 # ━━━━━━━ Dynamic Terminal Palette Reapply ━━━━━━━━━
 # Palette hook only for Linux
 if [[ "$(uname)" == "Linux" && -o interactive ]]; then
