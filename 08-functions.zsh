@@ -245,9 +245,6 @@ remindme() {
   echo "$msg"
 }
 
-alias reminders="jobs -l"
-alias killreminder="kill %"
-
 in() {
   local mins=$1; shift
   local msg="${*:-Reminder}"

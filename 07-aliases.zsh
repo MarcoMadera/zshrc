@@ -52,14 +52,19 @@ alias back='cd -'
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Use exa if available, otherwise fallback to standard ls
 if command -v exa &>/dev/null; then
-  alias ls='exa'
+  alias ls='exa --icons'
   alias l='exa -lbF --git'           # Long format, Git status
   alias ll='exa -laBF --git'          # All files, long format, Git status
   alias lt='exa -lbF --git --tree --level=3'  # Tree view
 else
-  alias ll='ls -lah'
-  alias la='ls -a'
+  case "$(uname)" in
+    Darwin) alias ls='ls -lahG' ;;
+    Linux)  alias ls='ls --color=auto' ;;
+  esac
 fi
+
+
+# ━━━━━━━ OS-specific Aliases ━━━━━━━━━
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # System & Network
@@ -79,3 +84,12 @@ alias reload='exec zsh'
 # ━━━━━━━ Utils ━━━━━━━━━
 alias myip='curl -s https://ipinfo.io/ip'
 alias ip='curl -s https://ipinfo.io/ip'
+
+alias reminders="jobs -l"
+alias killreminder="kill %"
+
+# ━━━━━━━ Zoxide ━━━━━━━━━
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
+  alias cd='z'
+fi
