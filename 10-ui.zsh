@@ -11,15 +11,20 @@ if [[ -n "$SSH_CONNECTION" ]]; then
 fi
 
 # ━━━━━━━ Dynamic Terminal Palette Reapply ━━━━━━━━━
-# Palette hook only for Linux
-if [[ "$(uname)" == "Linux" && -o interactive ]]; then
+if [[ $- == *i* && $(uname) == "Linux" ]]; then
   autoload -Uz add-zsh-hook
+
   apply_palette() {
-    if [[ -r $SEQFILE ]]; then
-      IFS= read -r palette <"$SEQFILE"
-      printf '%b' "$palette"
+    local seq_file="$HOME/.local/state/quickshell/user/generated/terminal/sequences.txt"
+    # Use system cat directly to bypass any alias or function override
+    if [[ -r "$seq_file" ]]; then
+      command cat "$seq_file"
     fi
   }
 
+  # Apply once on startup (instant colors, no visible output)
+  apply_palette &>/dev/null
+
+  # Reapply palette silently before each prompt
   add-zsh-hook precmd apply_palette
 fi

@@ -39,6 +39,10 @@ alias gstd='git stash drop'
 # Git Helpers
 alias galias="alias | grep 'git '"
 
+# bitwwarden
+alias bwunlock='bw unlock --raw > ~/.cache/bw_session'
+alias bwsession='export BW_SESSION=$(cat ~/.cache/bw_session)'
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Navigation
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
