@@ -16,4 +16,8 @@ export BAT_PAGER="less"
 export EDITOR="nvim"
 
 # ━━━━━━━ App-specific XDG Paths ━━━━━━━━━
-export SEQFILE="${XDG_CACHE_HOME}/ags/user/generated/terminal/sequences.txt"
+export SEQFILE="${XDG_CACHE_HOME}/quickshell/scripts/terminal/sequences.txt"
+export QML2_IMPORT_PATH="/usr/lib/qt6/qml:$QML2_IMPORT_PATH"
+export QT_QML_GENERATE_QMLLS_INI=ON
+export HYPRPM_USER=1
+export PATH="$HOME/.npm-global/bin:$PATH"
