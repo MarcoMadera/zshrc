@@ -5,29 +5,31 @@
 
 # ━━━━━━━ FZF ━━━━━━━━━
 if command -v fzf >/dev/null 2>&1; then
-  # Detect OS for fzf extra scripts
-  case "$(uname)" in
-    Darwin)
-      FZF_PREFIX="$(brew --prefix fzf 2>/dev/null)"
-      ;;
-    Linux)
-      FZF_PREFIX="/usr/share/fzf"
-      ;;
-    *)
-      FZF_PREFIX=""
-      ;;
-  esac
+  _fzf_init="$(fzf --zsh 2>/dev/null)"
+  if [[ -n "$_fzf_init" ]]; then
+    eval "$_fzf_init"
+  else
+    # Fallback for fzf < 0.48: search known prefix locations
+    case "$(uname)" in
+      Darwin)
+        for _d in /opt/homebrew/opt/fzf /usr/local/opt/fzf; do
+          [[ -d "$_d" ]] && { _fzf_prefix="$_d"; break }
+        done
+        ;;
+      Linux)
+        for _d in /usr/share/fzf /usr/share/doc/fzf/examples; do
+          [[ -d "$_d" ]] && { _fzf_prefix="$_d"; break }
+        done
+        ;;
+    esac
+    [[ -f "$_fzf_prefix/shell/key-bindings.zsh" ]] && source "$_fzf_prefix/shell/key-bindings.zsh"
+    [[ -f "$_fzf_prefix/shell/completion.zsh" ]]   && source "$_fzf_prefix/shell/completion.zsh"
+    unset _fzf_prefix
+  fi
+  unset _fzf_init
 
-  # Source keybindings and completions if available
-  [[ -f "$FZF_PREFIX/shell/key-bindings.zsh" ]] && source "$FZF_PREFIX/shell/key-bindings.zsh"
-  [[ -f "$FZF_PREFIX/shell/completion.zsh" ]] && source "$FZF_PREFIX/shell/completion.zsh"
-
-  # FZF UI defaults
   export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"
   export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git 2>/dev/null || find . -type f"
 
-  # Fuzzy history search function
-  fh() {
-    print -z "$(history | cut -c8- | fzf --no-sort)"
-  }
+  fh() { print -z "$(fc -l 1 | fzf --no-sort | sed 's/^ *[0-9]* *//')" }
 fi
