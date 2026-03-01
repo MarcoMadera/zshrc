@@ -10,13 +10,19 @@ please() {
 }
 
 whereami() {
-  local host
-  host=$(command -v hostname >/dev/null && hostname || echo "unknown")
+  local host info
+  host=$(hostname 2>/dev/null || echo "unknown")
+  info=$(curl -s ipinfo.io/json 2>/dev/null)
 
   echo "🖥️  Host:      $host"
-  echo "🌐 IP:        $(curl -s ifconfig.me)"
-  echo "📍 Location:  $(curl -s ipinfo.io/city), $(curl -s ipinfo.io/country)"
-  echo "🕰  Time:      $(date '+%A, %B %d — %H:%M %p')"
+  if command -v jq &>/dev/null && [[ -n "$info" ]]; then
+    echo "🌐 IP:        $(jq -r '.ip // "unknown"' <<< "$info")"
+    echo "📍 Location:  $(jq -r '"\(.city // "unknown"), \(.country // "unknown")"' <<< "$info")"
+  else
+    echo "🌐 IP:        $(curl -s ifconfig.me 2>/dev/null)"
+    echo "📍 Location:  unknown (install jq for details)"
+  fi
+  echo "🕰  Time:      $(strftime '%A, %B %d — %H:%M %p' $EPOCHSECONDS)"
 }
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -168,7 +174,7 @@ bak() {
     echo "Usage: bak <filename>"
     return 1
   fi
-  local timestamp=$(date +%Y%m%d-%H%M%S)
+  local timestamp=$(strftime '%Y%m%d-%H%M%S' $EPOCHSECONDS)
   cp -a "$1" "${1}.bak.${timestamp}" && echo "Backed up $1 to ${1}.bak.${timestamp}"
 }
 
@@ -220,15 +226,12 @@ qr() {
 # Time Management
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 stopwatch() {
-  local start end elapsed
-  start=$(date +%s.%3N)  # seconds with milliseconds
+  local start=$EPOCHREALTIME
 
   echo "⏱ Stopwatch started. Press any key to stop..."
   read -k 1
 
-  end=$(date +%s.%3N)
-  elapsed=$(printf "%.3f" "$(echo "$end - $start" | bc)")
-  echo "⏰ Elapsed: ${elapsed}s"
+  printf "⏰ Elapsed: %.3fs\n" $(( EPOCHREALTIME - start ))
 }
 
 timer() {
@@ -344,7 +347,7 @@ shouldi() {
   local action="${*:-do this}"
   local verdicts=("Yes." "No." "Absolutely." "Hell no." "Try again later." "Flip a coin.")
   echo "🤔 Should you $action?"
-  echo "👉 ${verdicts[RANDOM % ${#verdicts[@]}]}"
+  echo "👉 ${verdicts[RANDOM % ${#verdicts[@]} + 1]}"
 }
 
 breathe() {

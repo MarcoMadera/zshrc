@@ -11,7 +11,11 @@ if command -v fzf >/dev/null 2>&1; then
   else
     # Fallback for fzf < 0.48: search known prefix locations
     case "$(uname)" in
-      Darwin) _fzf_prefix="$(brew --prefix fzf 2>/dev/null)" ;;
+      Darwin)
+        for _d in /opt/homebrew/opt/fzf /usr/local/opt/fzf; do
+          [[ -d "$_d" ]] && { _fzf_prefix="$_d"; break }
+        done
+        ;;
       Linux)
         for _d in /usr/share/fzf /usr/share/doc/fzf/examples; do
           [[ -d "$_d" ]] && { _fzf_prefix="$_d"; break }
@@ -27,5 +31,5 @@ if command -v fzf >/dev/null 2>&1; then
   export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"
   export FZF_DEFAULT_COMMAND="fd --type f --hidden --follow --exclude .git 2>/dev/null || find . -type f"
 
-  fh() { print -z "$(history | cut -c8- | fzf --no-sort)" }
+  fh() { print -z "$(fc -l 1 | fzf --no-sort | sed 's/^ *[0-9]* *//')" }
 fi
