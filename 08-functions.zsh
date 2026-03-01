@@ -190,7 +190,12 @@ headers() {
 
 serve() {
   local port="${1:-8000}"
-  local ip_addr=$(ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' || hostname -I | awk '{print $1}') # Tries for eth0, then hostname -I
+  local ip_addr
+  if [[ "$(uname)" == "Darwin" ]]; then
+    ip_addr=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "localhost")
+  else
+    ip_addr=$(ip -4 addr show eth0 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' || hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+  fi
   echo "Serving current directory ($PWD) at http://${ip_addr}:${port}"
   # Try python3 http.server, then python SimpleHTTPServer
   if command -v python3 &>/dev/null; then
@@ -248,7 +253,6 @@ timer() {
 
 remindme() {
   local msg="${*:-Hey, time's up!}"
-  sleep 3 && \
   (command -v say >/dev/null && say "$msg") || \
   (command -v spd-say >/dev/null && spd-say "$msg") || \
   echo "$msg"
@@ -280,7 +284,7 @@ saycolor() {
     "Ghost White:#F8F8FF"
   )
 
-  local choice="${colors[RANDOM % ${#colors[@]}]}"
+  local choice="${colors[RANDOM % ${#colors[@]} + 1]}"
   local name="${choice%%:*}"
   local hex="${choice##*:}"
 
@@ -383,11 +387,6 @@ breathe() {
 # FZF Functions
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if command -v fzf &>/dev/null; then
-  # Fuzzy find in command history
-  fh() {
-    eval $( ([ -n "$ZSH_NAME" ] && fc -l 1 || history) | fzf +s --tac | sed 's/ *[0-9]* *//')
-  }
-  
   # Fuzzy find files and open with $EDITOR (uses fd if available)
   fe() {
     local file

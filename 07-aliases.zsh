@@ -54,12 +54,17 @@ alias back='cd -'
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # File Listing
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Use exa if available, otherwise fallback to standard ls
-if command -v exa &>/dev/null; then
+# Use eza (maintained exa fork) if available, fall back to exa, then system ls
+if command -v eza &>/dev/null; then
+  alias ls='eza --icons'
+  alias l='eza -lbF --git'
+  alias ll='eza -laBF --git'
+  alias lt='eza -lbF --git --tree --level=3'
+elif command -v exa &>/dev/null; then
   alias ls='exa --icons'
-  alias l='exa -lbF --git'           # Long format, Git status
-  alias ll='exa -laBF --git'          # All files, long format, Git status
-  alias lt='exa -lbF --git --tree --level=3'  # Tree view
+  alias l='exa -lbF --git'
+  alias ll='exa -laBF --git'
+  alias lt='exa -lbF --git --tree --level=3'
 else
   case "$(uname)" in
     Darwin) alias ls='ls -lahG' ;;
@@ -77,7 +82,6 @@ alias cls="clear && printf '\e[3J'"
 alias h='history'
 alias ports='ss -tulanp'
 alias myip='curl -s https://ipinfo.io/ip'
-alias ip='curl -s https://ipinfo.io/ip'  # Duplicate of myip
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Configuration
@@ -86,9 +90,6 @@ alias zshrc='${EDITOR:-nvim} "${ZSHRC_DIR:-$HOME/.zshrc}"'
 alias reload='exec zsh'
 
 # ━━━━━━━ Utils ━━━━━━━━━
-alias myip='curl -s https://ipinfo.io/ip'
-alias ip='curl -s https://ipinfo.io/ip'
-
 alias reminders="jobs -l"
 alias killreminder="kill %"
 

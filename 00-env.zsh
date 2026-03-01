@@ -20,7 +20,6 @@ export SEQFILE="${XDG_CACHE_HOME}/quickshell/scripts/terminal/sequences.txt"
 export QML2_IMPORT_PATH="/usr/lib/qt6/qml:$QML2_IMPORT_PATH"
 export QT_QML_GENERATE_QMLLS_INI=ON
 export HYPRPM_USER=1
-export PATH="$HOME/.npm-global/bin:$PATH"
 export KITTY_CONFIG_DIRECTORY="$HOME/.config/kitty"
 
 [ -n "$KITTY_WINDOW_ID" ] && printf '\033]30001\033\\'

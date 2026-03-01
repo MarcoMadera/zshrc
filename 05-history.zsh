@@ -1,6 +1,5 @@
 # ━━━━━━━ History Options ━━━━━━━━━
-setopt inc_append_history       # Write to history immediately, not at shell exit
-setopt share_history            # Share history between sessions
+setopt share_history            # Share history between sessions (implies inc_append_history)
 setopt append_history           # Don't overwrite history file
 setopt extended_history         # Timestamp each command
 setopt hist_expire_dups_first  # Expire duplicate entries first
@@ -14,6 +13,6 @@ setopt auto_cd auto_pushd pushd_ignore_dups pushd_minus
 setopt extended_glob glob_dots numeric_glob_sort no_case_glob
 
 # ━━━━━━━ History File Location ━━━━━━━━━
-HISTFILE="$XDG_CACHE_HOME/.zsh_history"
+HISTFILE="$XDG_CACHE_HOME/zsh/history"
 HISTSIZE=50000
 SAVEHIST=50000

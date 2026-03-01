@@ -3,6 +3,7 @@ typeset -U path
 # add paths here for any system
 local_paths=(
   "$HOME/.local/bin"
+  "$HOME/.npm-global/bin"
   "$HOME/go/bin"
   "/opt/homebrew/bin"
   "/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
