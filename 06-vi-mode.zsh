@@ -26,6 +26,8 @@ function _set_cursor() {
   esac
 }
 
+typeset -g _prev_region_active=0
+
 function _update_mode_vars() {
   local current_mode
 
@@ -37,16 +39,24 @@ function _update_mode_vars() {
     else
       current_mode="NORMAL"
     fi
+  elif [[ $KEYMAP == visual ]]; then
+    [[ $REGION_ACTIVE == 2 ]] && current_mode="VIS-BK" || current_mode="VISUAL"
   else
     current_mode="INSERT"
   fi
 
   MODE=$(format_mode_indicator "$current_mode")
   [[ $current_mode == "INSERT" ]] && _set_cursor beam || _set_cursor block
+
+  # Only call reset-prompt when REGION_ACTIVE changes (entering/exiting visual mode).
+  # Calling it unconditionally here causes an infinite redraw loop.
+  if [[ $REGION_ACTIVE != $_prev_region_active ]]; then
+    _prev_region_active=$REGION_ACTIVE
+    zle reset-prompt 2>/dev/null || true
+  fi
 }
 
-# zle-line-pre-redraw: only update vars — calling reset-prompt here
-# would trigger another redraw → infinite loop → input getting stuck
+# Called by zle-keymap-select (INSERT ↔ NORMAL transitions)
 function update_mode_indicator() {
   _update_mode_vars
   zle reset-prompt 2>/dev/null || true
