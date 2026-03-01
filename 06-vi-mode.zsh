@@ -1,24 +1,34 @@
 bindkey -v
-typeset -A MODE_STYLES
-
-MODE_STYLES=(
-  "INSERT"  "cyan"
-  "NORMAL"  "yellow" 
-  "VISUAL"  "red"
-  "VIS-BK"  "magenta"
-)
 
 function format_mode_indicator() {
   local mode_name="$1"
-  local color="${MODE_STYLES[$mode_name]}"
-  echo "%B%F{$color}%f%K{$color}%F{black}[$mode_name]%f%k%F{$color}%f%b"
+  local key
+  local label
+  case "$mode_name" in
+    INSERT) key="mode_insert"; label="I" ;;
+    NORMAL) key="mode_normal"; label="N" ;;
+    VISUAL) key="mode_visual"; label="V" ;;
+    VIS-BK) key="mode_visbk"; label="B" ;;
+  esac
+  create_pill "$label" "$(palette ${key}_bg)" "$(palette ${key}_fg)"
 }
 
-MODE=$(format_mode_indicator "INSERT")
+function _init_mode_indicator() {
+  MODE=$(format_mode_indicator "INSERT")
+  add-zsh-hook -d precmd _init_mode_indicator
+}
+add-zsh-hook precmd _init_mode_indicator
+
+function _set_cursor() {
+  case "$1" in
+    beam)  printf '\e[6 q' ;;  # steady bar  — insert
+    block) printf '\e[2 q' ;;  # steady block — normal/visual
+  esac
+}
 
 function update_mode_indicator() {
   local current_mode
-  
+
   if [[ $KEYMAP == vicmd ]]; then
     if [[ $REGION_ACTIVE == 1 ]]; then
       current_mode="VISUAL"
@@ -30,11 +40,15 @@ function update_mode_indicator() {
   else
     current_mode="INSERT"
   fi
-  
+
   MODE=$(format_mode_indicator "$current_mode")
-  
+  [[ $current_mode == "INSERT" ]] && _set_cursor beam || _set_cursor block
+
   zle reset-prompt 2>/dev/null || true
 }
+
+function _zle_line_init() { _set_cursor beam }
+function _zle_line_finish() { _set_cursor beam }
 
 typeset -A SURROUND_PAIRS=(
   '(' ')'  '[' ']'  '{' '}'  '<' '>'
@@ -247,3 +261,5 @@ zle -N surround_va_angle
 
 zle -N zle-line-pre-redraw update_mode_indicator
 zle -N zle-keymap-select update_mode_indicator
+zle -N zle-line-init _zle_line_init
+zle -N zle-line-finish _zle_line_finish

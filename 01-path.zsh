@@ -6,6 +6,8 @@ local_paths=(
   "$HOME/go/bin"
   "/opt/homebrew/bin"
   "/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
+  "$HOME/Qt/6.10.1/macos/bin"
+  "$HOME/.opencode/bin"
 )
 
 for p in "${local_paths[@]}"; do

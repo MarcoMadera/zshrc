@@ -73,7 +73,7 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # System & Network
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-alias cls='clear'
+alias cls="clear && printf '\e[3J'"
 alias h='history'
 alias ports='ss -tulanp'
 alias myip='curl -s https://ipinfo.io/ip'
