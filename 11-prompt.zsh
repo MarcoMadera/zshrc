@@ -144,36 +144,50 @@ function _find_up() {
 
 typeset -g _node_cache_ver="" _java_cache_ver=""
 typeset -g _cmd_start=""
+typeset -g _last_node_path="" _last_java_path=""
 
 function _preexec_timer() { _cmd_start=$EPOCHSECONDS }
 add-zsh-hook preexec _preexec_timer
 
-# Run in parent shell (chpwd hook) so assignments persist
 function _refresh_env_cache() {
+  # ── Node ──
   if _find_up "package.json" || _find_up ".nvmrc"; then
-    _node_cache_ver="$(node --version 2>/dev/null)"
-    _node_cache_ver="${_node_cache_ver#v}"
+    # nvm switches change the binary path in PATH — whence -p detects that
+    local current_node
+    current_node="$(whence -p node 2>/dev/null)"
+    if [[ "$current_node" != "$_last_node_path" ]]; then
+      _last_node_path="$current_node"
+      _node_cache_ver="$(node --version 2>/dev/null)"
+      _node_cache_ver="${_node_cache_ver#v}"
+    fi
   else
     _node_cache_ver=""
+    _last_node_path=""
   fi
 
+  # ── Java ──
   if _find_up "pom.xml" || _find_up "build.gradle" || _find_up "build.gradle.kts"; then
-    local raw ver
-    raw="$(java -version 2>&1 | head -1)"
-    ver="${raw#*version \"}"
-    ver="${ver%%\"*}"
-    [[ "$ver" == 1.* ]] && ver="${ver#1.}" && ver="${ver%%.*}" || ver="${ver%%.*}"
-    _java_cache_ver="$ver"
+    # On Linux, update-alternatives changes the symlink chain under /usr/bin/java.
+    # readlink -f resolves it fully; falls back to whence -p on macOS.
+    local current_java
+    current_java="$(readlink -f "$(whence -p java 2>/dev/null)" 2>/dev/null)"
+    [[ -z "$current_java" ]] && current_java="$(whence -p java 2>/dev/null)"
+    if [[ "$current_java" != "$_last_java_path" ]]; then
+      _last_java_path="$current_java"
+      local raw ver
+      raw="$(java -version 2>&1 | head -1)"
+      ver="${raw#*version \"}"
+      ver="${ver%%\"*}"
+      [[ "$ver" == 1.* ]] && ver="${ver#1.}" && ver="${ver%%.*}" || ver="${ver%%.*}"
+      _java_cache_ver="$ver"
+    fi
   else
     _java_cache_ver=""
+    _last_java_path=""
   fi
 }
 
-function _init_env_cache() {
-  _refresh_env_cache
-  add-zsh-hook -d precmd _init_env_cache
-}
-add-zsh-hook precmd _init_env_cache
+add-zsh-hook precmd _refresh_env_cache
 add-zsh-hook chpwd _refresh_env_cache
 
 # ──────────── Pill Builders ────────────
