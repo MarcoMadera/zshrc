@@ -22,6 +22,11 @@ PROMPT_CONFIG=(
   "enable_mode_pill"    "true"
   "enable_dir_pill"     "true"
   "enable_git_pill"     "true"
+  "enable_python_pill"  "true"
+  "enable_node_pill"    "true"
+  "enable_java_pill"    "true"
+  "enable_duration_pill" "true"
+  "duration_threshold"  "3"
 )
 
 # ──────────── Palette Engine ────────────
@@ -48,6 +53,14 @@ PALETTES[mocha.mode_visual_bg]="cba6f7"  # Mauve
 PALETTES[mocha.mode_visual_fg]="1e1e2e"  # Base
 PALETTES[mocha.mode_visbk_bg]="f5c2e7"   # Pink
 PALETTES[mocha.mode_visbk_fg]="1e1e2e"   # Base
+PALETTES[mocha.python_bg]="89dceb"       # Sky
+PALETTES[mocha.python_fg]="1e1e2e"       # Base
+PALETTES[mocha.node_bg]="f2cdcd"         # Flamingo
+PALETTES[mocha.node_fg]="1e1e2e"         # Base
+PALETTES[mocha.java_bg]="eba0ac"         # Maroon
+PALETTES[mocha.java_fg]="1e1e2e"         # Base
+PALETTES[mocha.duration_bg]="45475a"     # Surface1
+PALETTES[mocha.duration_fg]="cdd6f4"     # Text
 
 # ── Catppuccin Frappé (medium) ──
 PALETTES[frappe.primary_fg]="ef9f76"   # Peach
@@ -67,6 +80,14 @@ PALETTES[frappe.mode_visual_bg]="ca9ee6"  # Mauve
 PALETTES[frappe.mode_visual_fg]="303446"  # Base
 PALETTES[frappe.mode_visbk_bg]="f4b8e4"   # Pink
 PALETTES[frappe.mode_visbk_fg]="303446"   # Base
+PALETTES[frappe.python_bg]="99d1db"       # Sky
+PALETTES[frappe.python_fg]="303446"       # Base
+PALETTES[frappe.node_bg]="f2d5cf"         # Rosewater
+PALETTES[frappe.node_fg]="303446"         # Base
+PALETTES[frappe.java_bg]="ea999c"         # Maroon
+PALETTES[frappe.java_fg]="303446"         # Base
+PALETTES[frappe.duration_bg]="51576d"     # Surface1
+PALETTES[frappe.duration_fg]="c6d0f5"     # Text
 
 # ── Catppuccin Latte (light) ──
 PALETTES[latte.primary_fg]="fe640b"   # Peach
@@ -86,6 +107,14 @@ PALETTES[latte.mode_visual_bg]="8839ef"  # Mauve
 PALETTES[latte.mode_visual_fg]="eff1f5"  # Base
 PALETTES[latte.mode_visbk_bg]="ea76cb"   # Pink
 PALETTES[latte.mode_visbk_fg]="eff1f5"   # Base
+PALETTES[latte.python_bg]="04a5e5"       # Sky
+PALETTES[latte.python_fg]="eff1f5"       # Base
+PALETTES[latte.node_bg]="dc8a78"         # Rosewater
+PALETTES[latte.node_fg]="eff1f5"         # Base
+PALETTES[latte.java_bg]="e64553"         # Maroon
+PALETTES[latte.java_fg]="eff1f5"         # Base
+PALETTES[latte.duration_bg]="e6e9ef"     # Surface1
+PALETTES[latte.duration_fg]="5c5f77"     # Subtext0
 
 function palette() {
   echo "${PALETTES[${CURRENT_PALETTE}.$1]}"
@@ -101,6 +130,26 @@ function create_pill() {
 
   echo "${left}%K{#$bg}%F{#$fg}${content}%f%k${right}"
 }
+
+# ──────────── Utilities ────────────
+
+function _find_up() {
+  local file="$1" dir="$PWD"
+  while [[ "$dir" != "/" ]]; do
+    [[ -f "$dir/$file" ]] && return 0
+    dir="${dir:h}"
+  done
+  return 1
+}
+
+typeset -g _node_cache_dir="" _node_cache_ver=""
+typeset -g _java_cache_dir="" _java_cache_ver=""
+typeset -g _cmd_start=""
+
+function _preexec_timer() { _cmd_start=$EPOCHSECONDS }
+add-zsh-hook preexec _preexec_timer
+
+# ──────────── Pill Builders ────────────
 
 function build_time_pill() {
   [[ "${PROMPT_CONFIG[enable_time_pill]}" != "true" ]] && return
@@ -149,6 +198,81 @@ function build_git_pill() {
   create_pill "${vcs_info_msg_0_}" "$bg" "$fg"
 }
 
+function build_python_pill() {
+  [[ "${PROMPT_CONFIG[enable_python_pill]}" != "true" ]] && return
+
+  local env_name
+  if [[ -n "$VIRTUAL_ENV" ]]; then
+    env_name="${VIRTUAL_ENV:t}"
+  elif [[ -n "$CONDA_DEFAULT_ENV" && "$CONDA_DEFAULT_ENV" != "base" ]]; then
+    env_name="$CONDA_DEFAULT_ENV"
+  else
+    return
+  fi
+
+  create_pill " $env_name" "$(palette python_bg)" "$(palette python_fg)"
+}
+
+function build_node_pill() {
+  [[ "${PROMPT_CONFIG[enable_node_pill]}" != "true" ]] && return
+
+  if [[ "$_node_cache_dir" != "$PWD" ]]; then
+    _node_cache_dir="$PWD"
+    if _find_up "package.json" || _find_up ".nvmrc"; then
+      _node_cache_ver="$(node --version 2>/dev/null)"
+      _node_cache_ver="${_node_cache_ver#v}"
+    else
+      _node_cache_ver=""
+    fi
+
+  fi
+
+  [[ -z "$_node_cache_ver" ]] && return
+  create_pill "⬢ $_node_cache_ver" "$(palette node_bg)" "$(palette node_fg)"
+}
+
+function build_java_pill() {
+  [[ "${PROMPT_CONFIG[enable_java_pill]}" != "true" ]] && return
+
+  if [[ "$_java_cache_dir" != "$PWD" ]]; then
+    _java_cache_dir="$PWD"
+    if _find_up "pom.xml" || _find_up "build.gradle" || _find_up "build.gradle.kts"; then
+      local raw ver
+      raw="$(java -version 2>&1 | head -1)"
+      ver="${raw#*version \"}"
+      ver="${ver%%\"*}"
+      [[ "$ver" == 1.* ]] && ver="${ver#1.}" && ver="${ver%%.*}" || ver="${ver%%.*}"
+      _java_cache_ver="$ver"
+    else
+      _java_cache_ver=""
+    fi
+  fi
+
+  [[ -z "$_java_cache_ver" ]] && return
+  create_pill " $_java_cache_ver" "$(palette java_bg)" "$(palette java_fg)"
+}
+
+function build_duration_pill() {
+  [[ "${PROMPT_CONFIG[enable_duration_pill]}" != "true" ]] && return
+  [[ -z "$_cmd_start" ]] && return
+
+  local elapsed=$(( EPOCHSECONDS - _cmd_start ))
+  _cmd_start=""
+
+  (( elapsed < ${PROMPT_CONFIG[duration_threshold]:-3} )) && return
+
+  local label
+  if (( elapsed >= 3600 )); then
+    label="$(( elapsed / 3600 ))h $(( (elapsed % 3600) / 60 ))m"
+  elif (( elapsed >= 60 )); then
+    label="$(( elapsed / 60 ))m $(( elapsed % 60 ))s"
+  else
+    label="${elapsed}s"
+  fi
+
+  create_pill "󰔛 $label" "$(palette duration_bg)" "$(palette duration_fg)"
+}
+
 function build_prompt_char() {
   local fg="$(palette primary_fg)"
   echo "%F{#$fg}${PROMPT_CONFIG[prompt_char]}  %f"
@@ -162,12 +286,20 @@ function build_prompt() {
   local mode_pill=$(build_mode_pill)
   local dir_pill=$(build_dir_pill)
   local git_pill=$(build_git_pill)
+  local python_pill=$(build_python_pill)
+  local node_pill=$(build_node_pill)
+  local java_pill=$(build_java_pill)
+  local duration_pill=$(build_duration_pill)
   local prompt_char=$(build_prompt_char)
-  
-  [[ -n "$time_pill" ]] && pills+=("$time_pill")
-  [[ -n "$mode_pill" ]] && pills+=("$mode_pill")
-  [[ -n "$dir_pill" ]] && pills+=("$dir_pill")
-  [[ -n "$git_pill" ]] && pills+=("$git_pill")
+
+  [[ -n "$time_pill" ]]     && pills+=("$time_pill")
+  [[ -n "$mode_pill" ]]     && pills+=("$mode_pill")
+  [[ -n "$dir_pill" ]]      && pills+=("$dir_pill")
+  [[ -n "$git_pill" ]]      && pills+=("$git_pill")
+  [[ -n "$python_pill" ]]   && pills+=("$python_pill")
+  [[ -n "$node_pill" ]]     && pills+=("$node_pill")
+  [[ -n "$java_pill" ]]     && pills+=("$java_pill")
+  [[ -n "$duration_pill" ]] && pills+=("$duration_pill")
   
   local top_line=$(join_by "$separator" "${pills[@]}")
   
