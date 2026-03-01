@@ -125,7 +125,7 @@ _sur_readkey() {
   local timeout=2 #seconds
   local key
   
-  read -k 1 key
+  read -t $timeout -k 1 key
   
   if [[ -n "$key" ]]; then
     REPLY=$key

@@ -142,12 +142,39 @@ function _find_up() {
   return 1
 }
 
-typeset -g _node_cache_dir="" _node_cache_ver=""
-typeset -g _java_cache_dir="" _java_cache_ver=""
+typeset -g _node_cache_ver="" _java_cache_ver=""
 typeset -g _cmd_start=""
 
 function _preexec_timer() { _cmd_start=$EPOCHSECONDS }
 add-zsh-hook preexec _preexec_timer
+
+# Run in parent shell (chpwd hook) so assignments persist
+function _refresh_env_cache() {
+  if _find_up "package.json" || _find_up ".nvmrc"; then
+    _node_cache_ver="$(node --version 2>/dev/null)"
+    _node_cache_ver="${_node_cache_ver#v}"
+  else
+    _node_cache_ver=""
+  fi
+
+  if _find_up "pom.xml" || _find_up "build.gradle" || _find_up "build.gradle.kts"; then
+    local raw ver
+    raw="$(java -version 2>&1 | head -1)"
+    ver="${raw#*version \"}"
+    ver="${ver%%\"*}"
+    [[ "$ver" == 1.* ]] && ver="${ver#1.}" && ver="${ver%%.*}" || ver="${ver%%.*}"
+    _java_cache_ver="$ver"
+  else
+    _java_cache_ver=""
+  fi
+}
+
+function _init_env_cache() {
+  _refresh_env_cache
+  add-zsh-hook -d precmd _init_env_cache
+}
+add-zsh-hook precmd _init_env_cache
+add-zsh-hook chpwd _refresh_env_cache
 
 # ──────────── Pill Builders ────────────
 
@@ -155,7 +182,7 @@ function build_time_pill() {
   [[ "${PROMPT_CONFIG[enable_time_pill]}" != "true" ]] && return
   
   local clock_icon="${PROMPT_CONFIG[clock_icon]}"
-  local current_time="%B$(date +%H:%M)%b"
+  local current_time="%B$(strftime '%H:%M' $EPOCHSECONDS)%b"
 
   local bg="$(palette time_bg)"
   local fg="$(palette time_fg)"
@@ -187,7 +214,7 @@ function build_git_pill() {
   local bg
   local fg
 
-  if [[ -n "$(gs --porcelain 2>/dev/null)" ]]; then
+  if [[ -n "$(command git status --porcelain 2>/dev/null)" ]]; then
     bg="$(palette git_dirty_bg)"
     fg="$(palette git_dirty_fg)"
   else
@@ -214,50 +241,21 @@ function build_python_pill() {
 }
 
 function build_node_pill() {
-  [[ "${PROMPT_CONFIG[enable_node_pill]}" != "true" ]] && return
-
-  if [[ "$_node_cache_dir" != "$PWD" ]]; then
-    _node_cache_dir="$PWD"
-    if _find_up "package.json" || _find_up ".nvmrc"; then
-      _node_cache_ver="$(node --version 2>/dev/null)"
-      _node_cache_ver="${_node_cache_ver#v}"
-    else
-      _node_cache_ver=""
-    fi
-
-  fi
-
+  [[  "${PROMPT_CONFIG[enable_node_pill]}" != "true" ]] && return
   [[ -z "$_node_cache_ver" ]] && return
   create_pill "⬢ $_node_cache_ver" "$(palette node_bg)" "$(palette node_fg)"
 }
 
 function build_java_pill() {
   [[ "${PROMPT_CONFIG[enable_java_pill]}" != "true" ]] && return
-
-  if [[ "$_java_cache_dir" != "$PWD" ]]; then
-    _java_cache_dir="$PWD"
-    if _find_up "pom.xml" || _find_up "build.gradle" || _find_up "build.gradle.kts"; then
-      local raw ver
-      raw="$(java -version 2>&1 | head -1)"
-      ver="${raw#*version \"}"
-      ver="${ver%%\"*}"
-      [[ "$ver" == 1.* ]] && ver="${ver#1.}" && ver="${ver%%.*}" || ver="${ver%%.*}"
-      _java_cache_ver="$ver"
-    else
-      _java_cache_ver=""
-    fi
-  fi
-
   [[ -z "$_java_cache_ver" ]] && return
   create_pill " $_java_cache_ver" "$(palette java_bg)" "$(palette java_fg)"
 }
 
 function build_duration_pill() {
   [[ "${PROMPT_CONFIG[enable_duration_pill]}" != "true" ]] && return
-  [[ -z "$_cmd_start" ]] && return
-
-  local elapsed=$(( EPOCHSECONDS - _cmd_start ))
-  _cmd_start=""
+  local elapsed="$1"
+  [[ -z "$elapsed" ]] && return
 
   (( elapsed < ${PROMPT_CONFIG[duration_threshold]:-3} )) && return
 
@@ -281,7 +279,14 @@ function build_prompt_char() {
 function build_prompt() {
   local separator="${PROMPT_CONFIG[pill_separator]}"
   local pills=()
-  
+
+  # Compute elapsed and clear timer in parent scope — subshells can't do this
+  local _elapsed=""
+  if [[ -n "$_cmd_start" ]]; then
+    _elapsed=$(( EPOCHSECONDS - _cmd_start ))
+    _cmd_start=""
+  fi
+
   local time_pill=$(build_time_pill)
   local mode_pill=$(build_mode_pill)
   local dir_pill=$(build_dir_pill)
@@ -289,7 +294,7 @@ function build_prompt() {
   local python_pill=$(build_python_pill)
   local node_pill=$(build_node_pill)
   local java_pill=$(build_java_pill)
-  local duration_pill=$(build_duration_pill)
+  local duration_pill=$(build_duration_pill "$_elapsed")
   local prompt_char=$(build_prompt_char)
 
   [[ -n "$time_pill" ]]     && pills+=("$time_pill")
@@ -301,28 +306,14 @@ function build_prompt() {
   [[ -n "$java_pill" ]]     && pills+=("$java_pill")
   [[ -n "$duration_pill" ]] && pills+=("$duration_pill")
   
-  local top_line=$(join_by "$separator" "${pills[@]}")
-  
-  PROMPT="${top_line}"$'\n'"${prompt_char}"
-}
-
-# join array elements with a delimiter
-function join_by() {
-  local delimiter="$1"
-  shift
-  local result=""
-  local first=true
-  
-  for item in "$@"; do
-    if [[ "$first" == true ]]; then
-      result="$item"
-      first=false
-    else
-      result="${result}${delimiter}${item}"
-    fi
+  local top_line=""
+  for pill in "${pills[@]}"; do
+    [[ -n "$top_line" ]] && top_line+="$separator"
+    top_line+="$pill"
   done
-  
-  echo "$result"
+
+  PROMPT="${top_line}"$'\n'"${prompt_char}"
+  [[ -n "$SSH_CONNECTION" ]] && PROMPT="%F{red}[SSH]%f $PROMPT"
 }
 
 add-zsh-hook precmd build_prompt

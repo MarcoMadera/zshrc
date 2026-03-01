@@ -5,10 +5,6 @@
 # ━━━━━━━ Load Color Definitions ━━━━━━━━━
 autoload -Uz colors && colors
 
-# ━━━━━━━ SSH Visual Prompt Tag ━━━━━━━━━
-if [[ -n "$SSH_CONNECTION" ]]; then
-  PROMPT="%F{red}[SSH]%f $PROMPT"
-fi
 
 # ━━━━━━━ Dynamic Terminal Palette Reapply ━━━━━━━━━
 if [[ $- == *i* && $(uname) == "Linux" ]]; then

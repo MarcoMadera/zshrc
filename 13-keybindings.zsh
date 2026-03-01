@@ -60,4 +60,5 @@ bindkey -M visual "a>" surround_va_angle
 
 bindkey -M viins '^P' history-substring-search-up
 bindkey -M viins '^N' history-substring-search-down
+bindkey -M viins '^L' clear-screen
 

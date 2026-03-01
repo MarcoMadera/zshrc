@@ -1,11 +1,11 @@
 # ───── Completion Core ─────
 autoload -Uz compinit
-ZCOMPDUMP_FILE="${ZDOTDIR:-$HOME}/.zcompdump"
+ZCOMPDUMP_FILE="$XDG_CACHE_HOME/zsh/.zcompdump"
 
 if [[ -n ${ZCOMPDUMP_FILE}(#qN.mh+24) ]]; then
-  compinit
+  compinit -d "$ZCOMPDUMP_FILE"
 else
-  compinit -C
+  compinit -C -d "$ZCOMPDUMP_FILE"
 fi
 
 setopt COMPLETE_IN_WORD

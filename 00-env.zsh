@@ -7,8 +7,7 @@ export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 mkdir -p "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_DATA_HOME"
 mkdir -p "$XDG_CACHE_HOME/zsh"
 
-# ━━━━━━━ Frameworks ━━━━━━━━━
-export ZSH="$HOME/.oh-my-zsh"
+# ━━━━━━━ Plugin Manager ━━━━━━━━━
 export ZINIT_HOME="$XDG_DATA_HOME/zinit"
 
 export LANG=en_US.UTF-8

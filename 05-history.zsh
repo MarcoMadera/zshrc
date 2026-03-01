@@ -1,6 +1,5 @@
 # ━━━━━━━ History Options ━━━━━━━━━
-setopt share_history            # Share history between sessions (implies inc_append_history)
-setopt append_history           # Don't overwrite history file
+setopt share_history            # Share history between sessions (implies append + inc_append)
 setopt extended_history         # Timestamp each command
 setopt hist_expire_dups_first  # Expire duplicate entries first
 setopt hist_ignore_dups        # Don’t record duplicates
@@ -16,3 +15,6 @@ setopt extended_glob glob_dots numeric_glob_sort no_case_glob
 HISTFILE="$XDG_CACHE_HOME/zsh/history"
 HISTSIZE=50000
 SAVEHIST=50000
+
+# ━━━━━━━ Word Navigation ━━━━━━━━━
+WORDCHARS='*?_-.[]~&;!#$%^(){}<>'
