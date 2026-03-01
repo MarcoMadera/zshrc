@@ -26,7 +26,7 @@ function _set_cursor() {
   esac
 }
 
-function update_mode_indicator() {
+function _update_mode_vars() {
   local current_mode
 
   if [[ $KEYMAP == vicmd ]]; then
@@ -43,7 +43,12 @@ function update_mode_indicator() {
 
   MODE=$(format_mode_indicator "$current_mode")
   [[ $current_mode == "INSERT" ]] && _set_cursor beam || _set_cursor block
+}
 
+# zle-line-pre-redraw: only update vars — calling reset-prompt here
+# would trigger another redraw → infinite loop → input getting stuck
+function update_mode_indicator() {
+  _update_mode_vars
   zle reset-prompt 2>/dev/null || true
 }
 
@@ -259,7 +264,7 @@ zle -N surround_va_brace
 zle -N surround_vi_angle
 zle -N surround_va_angle
 
-zle -N zle-line-pre-redraw update_mode_indicator
+zle -N zle-line-pre-redraw _update_mode_vars
 zle -N zle-keymap-select update_mode_indicator
 zle -N zle-line-init _zle_line_init
 zle -N zle-line-finish _zle_line_finish
