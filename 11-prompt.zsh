@@ -25,6 +25,8 @@ PROMPT_CONFIG=(
   "enable_python_pill"  "true"
   "enable_node_pill"    "true"
   "enable_java_pill"    "true"
+  "enable_go_pill"      "true"
+  "enable_rust_pill"    "true"
   "enable_duration_pill" "true"
   "duration_threshold"  "3"
 )
@@ -59,6 +61,10 @@ PALETTES[mocha.node_bg]="f2cdcd"         # Flamingo
 PALETTES[mocha.node_fg]="1e1e2e"         # Base
 PALETTES[mocha.java_bg]="eba0ac"         # Maroon
 PALETTES[mocha.java_fg]="1e1e2e"         # Base
+PALETTES[mocha.go_bg]="74c7ec"           # Sapphire
+PALETTES[mocha.go_fg]="1e1e2e"           # Base
+PALETTES[mocha.rust_bg]="fab387"         # Peach
+PALETTES[mocha.rust_fg]="1e1e2e"         # Base
 PALETTES[mocha.duration_bg]="45475a"     # Surface1
 PALETTES[mocha.duration_fg]="cdd6f4"     # Text
 
@@ -86,6 +92,10 @@ PALETTES[frappe.node_bg]="f2d5cf"         # Rosewater
 PALETTES[frappe.node_fg]="303446"         # Base
 PALETTES[frappe.java_bg]="ea999c"         # Maroon
 PALETTES[frappe.java_fg]="303446"         # Base
+PALETTES[frappe.go_bg]="85c1dc"           # Sapphire
+PALETTES[frappe.go_fg]="303446"           # Base
+PALETTES[frappe.rust_bg]="ef9f76"         # Peach
+PALETTES[frappe.rust_fg]="303446"         # Base
 PALETTES[frappe.duration_bg]="51576d"     # Surface1
 PALETTES[frappe.duration_fg]="c6d0f5"     # Text
 
@@ -113,6 +123,10 @@ PALETTES[latte.node_bg]="dc8a78"         # Rosewater
 PALETTES[latte.node_fg]="eff1f5"         # Base
 PALETTES[latte.java_bg]="e64553"         # Maroon
 PALETTES[latte.java_fg]="eff1f5"         # Base
+PALETTES[latte.go_bg]="209fb5"           # Sapphire
+PALETTES[latte.go_fg]="eff1f5"           # Base
+PALETTES[latte.rust_bg]="fe640b"         # Peach
+PALETTES[latte.rust_fg]="eff1f5"         # Base
 PALETTES[latte.duration_bg]="e6e9ef"     # Surface1
 PALETTES[latte.duration_fg]="5c5f77"     # Subtext0
 
@@ -142,9 +156,15 @@ function _find_up() {
   return 1
 }
 
-typeset -g _node_cache_ver="" _java_cache_ver=""
+# Check if the current directory contains any file with the given extension
+function _has_ext() {
+  local -a m=($PWD/*.$1(N[1]))
+  (( ${#m} ))
+}
+
+typeset -g _node_cache_ver="" _java_cache_ver="" _python_cache_ver="" _go_cache_ver="" _rust_cache_ver=""
 typeset -g _cmd_start=""
-typeset -g _last_node_path="" _last_java_path=""
+typeset -g _last_node_path="" _last_java_path="" _last_python_path="" _last_go_path="" _last_rust_path=""
 
 function _preexec_timer() { _cmd_start=$EPOCHSECONDS }
 add-zsh-hook preexec _preexec_timer
@@ -152,7 +172,6 @@ add-zsh-hook preexec _preexec_timer
 function _refresh_env_cache() {
   # ── Node ──
   if _find_up "package.json" || _find_up ".nvmrc"; then
-    # nvm switches change the binary path in PATH — whence -p detects that
     local current_node
     current_node="$(whence -p node 2>/dev/null)"
     if [[ "$current_node" != "$_last_node_path" ]]; then
@@ -167,8 +186,6 @@ function _refresh_env_cache() {
 
   # ── Java ──
   if _find_up "pom.xml" || _find_up "build.gradle" || _find_up "build.gradle.kts"; then
-    # On Linux, update-alternatives changes the symlink chain under /usr/bin/java.
-    # readlink -f resolves it fully; falls back to whence -p on macOS.
     local current_java
     current_java="$(readlink -f "$(whence -p java 2>/dev/null)" 2>/dev/null)"
     [[ -z "$current_java" ]] && current_java="$(whence -p java 2>/dev/null)"
@@ -184,6 +201,60 @@ function _refresh_env_cache() {
   else
     _java_cache_ver=""
     _last_java_path=""
+  fi
+
+  # ── Python ──
+  if _find_up ".python-version" || _find_up "Pipfile" || _find_up "pyproject.toml" || \
+     _find_up "requirements.txt" || _find_up "setup.py" || _find_up "tox.ini" || \
+     [[ -n "$VIRTUAL_ENV" ]] || [[ -n "$CONDA_DEFAULT_ENV" && "$CONDA_DEFAULT_ENV" != "base" ]] || \
+     _has_ext py || _has_ext ipynb; then
+    # Include active env in fingerprint so switching envs triggers a re-check
+    local current_python="${VIRTUAL_ENV:-}:${CONDA_DEFAULT_ENV:-}:$(whence -p python3 2>/dev/null || whence -p python 2>/dev/null)"
+    if [[ "$current_python" != "$_last_python_path" ]]; then
+      _last_python_path="$current_python"
+      if command -v pyenv &>/dev/null; then
+        _python_cache_ver="$(pyenv version-name 2>/dev/null)"
+      else
+        _python_cache_ver="$(python3 --version 2>/dev/null || python --version 2>/dev/null)"
+        _python_cache_ver="${_python_cache_ver#Python }"
+      fi
+    fi
+  else
+    _python_cache_ver=""
+    _last_python_path=""
+  fi
+
+  # ── Go ──
+  if _find_up "go.mod" || _find_up "go.sum" || _find_up "go.work" || \
+     _find_up "glide.yaml" || _find_up "Gopkg.yml" || _find_up "Gopkg.lock" || \
+     _find_up ".go-version" || [[ -d "$PWD/Godeps" ]] || _has_ext go; then
+    local current_go
+    current_go="$(whence -p go 2>/dev/null)"
+    if [[ "$current_go" != "$_last_go_path" ]]; then
+      _last_go_path="$current_go"
+      local ver
+      ver="$(go env GOVERSION 2>/dev/null)"
+      _go_cache_ver="${ver#go}"
+    fi
+  else
+    _go_cache_ver=""
+    _last_go_path=""
+  fi
+
+  # ── Rust ──
+  if _find_up "Cargo.toml" || _find_up "Cargo.lock" || _has_ext rs; then
+    local current_rust
+    current_rust="$(whence -p rustc 2>/dev/null)"
+    if [[ "$current_rust" != "$_last_rust_path" ]]; then
+      _last_rust_path="$current_rust"
+      local ver
+      ver="$(rustc --version 2>/dev/null)"
+      ver="${ver#rustc }"
+      _rust_cache_ver="${ver%% *}"
+    fi
+  else
+    _rust_cache_ver=""
+    _last_rust_path=""
   fi
 }
 
@@ -242,28 +313,52 @@ function build_git_pill() {
 function build_python_pill() {
   [[ "${PROMPT_CONFIG[enable_python_pill]}" != "true" ]] && return
 
-  local env_name
+  [[ -z "$_python_cache_ver" ]] && return
+
+  local icon="%F{#FFD43B}%F{#D0E8F7}"
+  local content="${icon} $_python_cache_ver"
+  local env_name=""
   if [[ -n "$VIRTUAL_ENV" ]]; then
     env_name="${VIRTUAL_ENV:t}"
   elif [[ -n "$CONDA_DEFAULT_ENV" && "$CONDA_DEFAULT_ENV" != "base" ]]; then
     env_name="$CONDA_DEFAULT_ENV"
-  else
-    return
   fi
+  [[ -n "$env_name" ]] && content+=" ($env_name)"
 
-  create_pill " $env_name" "$(palette python_bg)" "$(palette python_fg)"
+  create_pill "$content" "1E3D5C" "D0E8F7"
 }
 
 function build_node_pill() {
   [[  "${PROMPT_CONFIG[enable_node_pill]}" != "true" ]] && return
   [[ -z "$_node_cache_ver" ]] && return
-  create_pill "⬢ $_node_cache_ver" "$(palette node_bg)" "$(palette node_fg)"
+  local node_icon="%F{#6CC24A} %F{#C8E8C8}"
+  create_pill "${node_icon} $_node_cache_ver" "1A3D1A" "C8E8C8"
 }
 
 function build_java_pill() {
   [[ "${PROMPT_CONFIG[enable_java_pill]}" != "true" ]] && return
   [[ -z "$_java_cache_ver" ]] && return
-  create_pill " $_java_cache_ver" "$(palette java_bg)" "$(palette java_fg)"
+  local java_icon="%F{#ED8B00}%F{#D0E8F7}"
+  create_pill "${java_icon} $_java_cache_ver" "1E3A5F" "D0E8F7"
+}
+
+function build_go_pill() {
+  [[ "${PROMPT_CONFIG[enable_go_pill]}" != "true" ]] && return
+  [[ -z "$_go_cache_ver" ]] && return
+
+  local icon="%F{#8FD2F9}%F{#D0E8F7}"
+  local content="${icon} $_go_cache_ver"
+  local bg="30677E"
+  local fg="D0E8F7"
+
+  create_pill "$content" "$bg" "$fg"
+}
+
+function build_rust_pill() {
+  [[ "${PROMPT_CONFIG[enable_rust_pill]}" != "true" ]] && return
+  [[ -z "$_rust_cache_ver" ]] && return
+  local rust_icon="%F{#CE422B}%F{#F0C5BF}"
+  create_pill "${rust_icon} $_rust_cache_ver" "2B1412" "F0C5BF"
 }
 
 function build_duration_pill() {
@@ -308,6 +403,8 @@ function build_prompt() {
   local python_pill=$(build_python_pill)
   local node_pill=$(build_node_pill)
   local java_pill=$(build_java_pill)
+  local go_pill=$(build_go_pill)
+  local rust_pill=$(build_rust_pill)
   local duration_pill=$(build_duration_pill "$_elapsed")
   local prompt_char=$(build_prompt_char)
 
@@ -318,6 +415,8 @@ function build_prompt() {
   [[ -n "$python_pill" ]]   && pills+=("$python_pill")
   [[ -n "$node_pill" ]]     && pills+=("$node_pill")
   [[ -n "$java_pill" ]]     && pills+=("$java_pill")
+  [[ -n "$go_pill" ]]       && pills+=("$go_pill")
+  [[ -n "$rust_pill" ]]     && pills+=("$rust_pill")
   [[ -n "$duration_pill" ]] && pills+=("$duration_pill")
   
   local top_line=""
