@@ -1,6 +1,7 @@
 # Enable prompt variable expansion
 setopt prompt_subst
 autoload -Uz add-zsh-hook
+zmodload zsh/stat
 
 # ──────────── Git Info ────────────
 zstyle ':vcs_info:*' enable git
@@ -21,8 +22,10 @@ PROMPT_CONFIG=(
   "enable_time_pill"    "true"
   "enable_mode_pill"    "true"
   "enable_dir_pill"     "true"
-  "enable_git_pill"     "true"
-  "enable_python_pill"  "true"
+  "enable_git_pill"       "true"
+  "enable_git_state_pill"   "true"
+  "enable_git_metrics_pill" "true"
+  "enable_python_pill"      "true"
   "enable_node_pill"    "true"
   "enable_java_pill"    "true"
   "enable_go_pill"      "true"
@@ -65,7 +68,11 @@ PALETTES[mocha.go_bg]="74c7ec"           # Sapphire
 PALETTES[mocha.go_fg]="1e1e2e"           # Base
 PALETTES[mocha.rust_bg]="fab387"         # Peach
 PALETTES[mocha.rust_fg]="1e1e2e"         # Base
-PALETTES[mocha.duration_bg]="45475a"     # Surface1
+PALETTES[mocha.git_state_bg]="f9e2af"      # Yellow
+PALETTES[mocha.git_state_fg]="1e1e2e"      # Base
+PALETTES[mocha.git_metrics_bg]="313244"    # Surface0
+PALETTES[mocha.git_metrics_fg]="cdd6f4"    # Text
+PALETTES[mocha.duration_bg]="45475a"       # Surface1
 PALETTES[mocha.duration_fg]="cdd6f4"     # Text
 
 # ── Catppuccin Frappé (medium) ──
@@ -96,7 +103,11 @@ PALETTES[frappe.go_bg]="85c1dc"           # Sapphire
 PALETTES[frappe.go_fg]="303446"           # Base
 PALETTES[frappe.rust_bg]="ef9f76"         # Peach
 PALETTES[frappe.rust_fg]="303446"         # Base
-PALETTES[frappe.duration_bg]="51576d"     # Surface1
+PALETTES[frappe.git_state_bg]="e5c890"      # Yellow
+PALETTES[frappe.git_state_fg]="303446"      # Base
+PALETTES[frappe.git_metrics_bg]="414559"    # Surface0
+PALETTES[frappe.git_metrics_fg]="c6d0f5"    # Text
+PALETTES[frappe.duration_bg]="51576d"       # Surface1
 PALETTES[frappe.duration_fg]="c6d0f5"     # Text
 
 # ── Catppuccin Latte (light) ──
@@ -127,7 +138,11 @@ PALETTES[latte.go_bg]="209fb5"           # Sapphire
 PALETTES[latte.go_fg]="eff1f5"           # Base
 PALETTES[latte.rust_bg]="fe640b"         # Peach
 PALETTES[latte.rust_fg]="eff1f5"         # Base
-PALETTES[latte.duration_bg]="e6e9ef"     # Surface1
+PALETTES[latte.git_state_bg]="df8e1d"      # Yellow
+PALETTES[latte.git_state_fg]="eff1f5"      # Base
+PALETTES[latte.git_metrics_bg]="ccd0da"    # Surface0
+PALETTES[latte.git_metrics_fg]="4c4f69"    # Text
+PALETTES[latte.duration_bg]="e6e9ef"       # Surface1
 PALETTES[latte.duration_fg]="5c5f77"     # Subtext0
 
 function palette() {
@@ -165,6 +180,9 @@ function _has_ext() {
 typeset -g _node_cache_ver="" _java_cache_ver="" _python_cache_ver="" _go_cache_ver="" _rust_cache_ver=""
 typeset -g _cmd_start=""
 typeset -g _last_node_path="" _last_java_path="" _last_python_path="" _last_go_path="" _last_rust_path=""
+typeset -g _current_git_dir=""
+typeset -g _git_metrics_cache="" _git_metrics_index_mtime="" _git_metrics_head=""
+typeset -g _git_is_dirty=""
 
 function _preexec_timer() { _cmd_start=$EPOCHSECONDS }
 add-zsh-hook preexec _preexec_timer
@@ -261,6 +279,48 @@ function _refresh_env_cache() {
 add-zsh-hook precmd _refresh_env_cache
 add-zsh-hook chpwd _refresh_env_cache
 
+function _refresh_git_metrics() {
+  _current_git_dir="$(command git rev-parse --absolute-git-dir 2>/dev/null)"
+
+  if [[ -z "$_current_git_dir" ]]; then
+    _git_metrics_cache=""
+    _git_is_dirty=""
+    _git_metrics_index_mtime=""
+    _git_metrics_head=""
+    return
+  fi
+
+  local -A _st
+  zstat -H _st +mtime "$_current_git_dir/index" 2>/dev/null
+  local cur_mtime="${_st[mtime]:-}"
+  local cur_head=""
+  [[ -f "$_current_git_dir/HEAD" ]] && cur_head="$(<"$_current_git_dir/HEAD")"
+
+  if [[ "$cur_mtime" == "$_git_metrics_index_mtime" && "$cur_head" == "$_git_metrics_head" ]]; then
+    return
+  fi
+
+  _git_metrics_index_mtime="$cur_mtime"
+  _git_metrics_head="$cur_head"
+
+  local porcelain
+  porcelain="$(command git status --porcelain 2>/dev/null)"
+  _git_is_dirty="${porcelain:+1}"
+
+  if [[ "${PROMPT_CONFIG[enable_git_metrics_pill]}" == "true" ]]; then
+    local shortstat added=0 deleted=0
+    shortstat="$(command git diff --shortstat --no-ext-diff --ignore-submodules HEAD 2>/dev/null)"
+    [[ "$shortstat" =~ '([0-9]+) insertion' ]] && added="${match[1]}"
+    [[ "$shortstat" =~ '([0-9]+) deletion'  ]] && deleted="${match[1]}"
+    if (( added == 0 && deleted == 0 )); then
+      _git_metrics_cache=""
+    else
+      _git_metrics_cache="${added}:${deleted}"
+    fi
+  fi
+}
+
+
 # ──────────── Pill Builders ────────────
 
 function build_time_pill() {
@@ -296,10 +356,9 @@ function build_git_pill() {
   [[ "${PROMPT_CONFIG[enable_git_pill]}" != "true" ]] && return
   [[ -z "$vcs_info_msg_0_" ]] && return
 
-  local bg
-  local fg
+  local bg fg
 
-  if [[ -n "$(command git status --porcelain 2>/dev/null)" ]]; then
+  if [[ "$_git_is_dirty" == "1" ]]; then
     bg="$(palette git_dirty_bg)"
     fg="$(palette git_dirty_fg)"
   else
@@ -308,6 +367,62 @@ function build_git_pill() {
   fi
 
   create_pill "${vcs_info_msg_0_}" "$bg" "$fg"
+}
+
+function build_git_state_pill() {
+  [[ "${PROMPT_CONFIG[enable_git_state_pill]}" != "true" ]] && return
+  [[ -z "$vcs_info_msg_0_" ]] && return
+  [[ -z "$_current_git_dir" ]] && return
+
+  local git_dir="$_current_git_dir"
+
+  local state="" progress=""
+
+  if [[ -d "$git_dir/rebase-merge" ]]; then
+    state="REBASING"
+    local cur="" tot=""
+    [[ -f "$git_dir/rebase-merge/msgnum" ]] && cur="$(<"$git_dir/rebase-merge/msgnum")"
+    [[ -f "$git_dir/rebase-merge/end"    ]] && tot="$(<"$git_dir/rebase-merge/end")"
+    cur="${cur//[[:space:]]/}"; tot="${tot//[[:space:]]/}"
+    [[ -n "$cur" && -n "$tot" ]] && progress="$cur/$tot"
+  elif [[ -d "$git_dir/rebase-apply" ]]; then
+    if   [[ -f "$git_dir/rebase-apply/rebasing" ]]; then state="REBASING"
+    elif [[ -f "$git_dir/rebase-apply/applying" ]]; then state="AM"
+    else                                                  state="AM/REBASE"
+    fi
+    local cur="" tot=""
+    [[ -f "$git_dir/rebase-apply/next" ]] && cur="$(<"$git_dir/rebase-apply/next")"
+    [[ -f "$git_dir/rebase-apply/last" ]] && tot="$(<"$git_dir/rebase-apply/last")"
+    cur="${cur//[[:space:]]/}"; tot="${tot//[[:space:]]/}"
+    [[ -n "$cur" && -n "$tot" ]] && progress="$cur/$tot"
+  elif [[ -f "$git_dir/MERGE_HEAD"       ]]; then state="MERGING"
+  elif [[ -f "$git_dir/CHERRY_PICK_HEAD" ]]; then state="CHERRY-PICKING"
+  elif [[ -f "$git_dir/REVERT_HEAD"      ]]; then state="REVERTING"
+  elif [[ -f "$git_dir/BISECT_LOG"       ]]; then state="BISECTING"
+  fi
+
+  [[ -z "$state" ]] && return
+
+  local content="$state"
+  [[ -n "$progress" ]] && content+=" $progress"
+
+  create_pill "$content" "$(palette git_state_bg)" "$(palette git_state_fg)"
+}
+
+function build_git_metrics_pill() {
+  [[ "${PROMPT_CONFIG[enable_git_metrics_pill]}" != "true" ]] && return
+  [[ -z "$_git_metrics_cache" ]] && return
+
+  local added="${_git_metrics_cache%%:*}"
+  local deleted="${_git_metrics_cache##*:}"
+
+  local bg="$(palette git_metrics_bg)"
+  local fg="$(palette git_metrics_fg)"
+  local green="$(palette git_clean_bg)"
+  local red="$(palette git_dirty_bg)"
+
+  local content="%F{#$green}+${added}%F{#$fg} %F{#$red}-${deleted}%F{#$fg}"
+  create_pill "$content" "$bg" "$fg"
 }
 
 function build_python_pill() {
@@ -331,7 +446,7 @@ function build_python_pill() {
 function build_node_pill() {
   [[  "${PROMPT_CONFIG[enable_node_pill]}" != "true" ]] && return
   [[ -z "$_node_cache_ver" ]] && return
-  local node_icon="%F{#6CC24A} %F{#C8E8C8}"
+  local node_icon="%F{#6CC24A}%F{#C8E8C8}"
   create_pill "${node_icon} $_node_cache_ver" "1A3D1A" "C8E8C8"
 }
 
@@ -396,10 +511,16 @@ function build_prompt() {
     _cmd_start=""
   fi
 
+  # Run in main shell so globals (_current_git_dir, _git_metrics_cache, _git_is_dirty) are set
+  # before the pill builders read them. A separate precmd hook breaks the hook chain.
+  _refresh_git_metrics
+
   local time_pill=$(build_time_pill)
   local mode_pill=$(build_mode_pill)
   local dir_pill=$(build_dir_pill)
   local git_pill=$(build_git_pill)
+  local git_state_pill=$(build_git_state_pill)
+  local git_metrics_pill=$(build_git_metrics_pill)
   local python_pill=$(build_python_pill)
   local node_pill=$(build_node_pill)
   local java_pill=$(build_java_pill)
@@ -411,8 +532,10 @@ function build_prompt() {
   [[ -n "$time_pill" ]]     && pills+=("$time_pill")
   [[ -n "$mode_pill" ]]     && pills+=("$mode_pill")
   [[ -n "$dir_pill" ]]      && pills+=("$dir_pill")
-  [[ -n "$git_pill" ]]      && pills+=("$git_pill")
-  [[ -n "$python_pill" ]]   && pills+=("$python_pill")
+  [[ -n "$git_pill" ]]       && pills+=("$git_pill")
+  [[ -n "$git_state_pill" ]]    && pills+=("$git_state_pill")
+  [[ -n "$git_metrics_pill" ]]  && pills+=("$git_metrics_pill")
+  [[ -n "$python_pill" ]]       && pills+=("$python_pill")
   [[ -n "$node_pill" ]]     && pills+=("$node_pill")
   [[ -n "$java_pill" ]]     && pills+=("$java_pill")
   [[ -n "$go_pill" ]]       && pills+=("$go_pill")

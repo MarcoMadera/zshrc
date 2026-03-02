@@ -5,10 +5,10 @@ function format_mode_indicator() {
   local key
   local label
   case "$mode_name" in
-    INSERT) key="mode_insert"; label="I" ;;
-    NORMAL) key="mode_normal"; label="N" ;;
-    VISUAL) key="mode_visual"; label="V" ;;
-    VIS-BK) key="mode_visbk"; label="B" ;;
+    INSERT) key="mode_insert"; label="i" ;;
+    NORMAL) key="mode_normal"; label="n" ;;
+    VISUAL) key="mode_visual"; label="v" ;;
+    VIS-BK) key="mode_visbk"; label="b" ;;
   esac
   create_pill "$label" "$(palette ${key}_bg)" "$(palette ${key}_fg)"
 }
