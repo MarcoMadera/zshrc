@@ -33,3 +33,6 @@ if command -v fzf >/dev/null 2>&1; then
 
   fh() { print -z "$(fc -l 1 | fzf --no-sort | sed 's/^ *[0-9]* *//')" }
 fi
+
+# ━━━━━━━ Bun ━━━━━━━━━
+[[ -s "$BUN_INSTALL/_bun" ]] && source "$BUN_INSTALL/_bun"
