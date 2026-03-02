@@ -1,14 +1,12 @@
 # Enable prompt variable expansion
 setopt prompt_subst
 autoload -Uz add-zsh-hook
-zmodload zsh/stat
 
 # ──────────── Git Info ────────────
 zstyle ':vcs_info:*' enable git
 zstyle ':vcs_info:git:*' formats '%b'
 autoload -Uz vcs_info
-add-zsh-hook precmd  vcs_info
-add-zsh-hook chpwd   vcs_info
+add-zsh-hook precmd vcs_info
 
 
 typeset -A PROMPT_CONFIG
@@ -277,7 +275,6 @@ function _refresh_env_cache() {
 }
 
 add-zsh-hook precmd _refresh_env_cache
-add-zsh-hook chpwd _refresh_env_cache
 
 function _refresh_git_metrics() {
   _current_git_dir="$(command git rev-parse --absolute-git-dir 2>/dev/null)"
@@ -306,6 +303,9 @@ function _refresh_git_metrics() {
   local porcelain
   porcelain="$(command git status --porcelain 2>/dev/null)"
   _git_is_dirty="${porcelain:+1}"
+  # Re-read mtime after git status, which refreshes the index and changes its mtime
+  zstat -H _st +mtime "$_current_git_dir/index" 2>/dev/null
+  _git_metrics_index_mtime="${_st[mtime]:-}"
 
   if [[ "${PROMPT_CONFIG[enable_git_metrics_pill]}" == "true" ]]; then
     local shortstat added=0 deleted=0
@@ -325,12 +325,11 @@ function _refresh_git_metrics() {
 
 function build_time_pill() {
   [[ "${PROMPT_CONFIG[enable_time_pill]}" != "true" ]] && return
-  
+
   local clock_icon="${PROMPT_CONFIG[clock_icon]}"
   local current_time="%B$(strftime '%H:%M' $EPOCHSECONDS)%b"
-
-  local bg="$(palette time_bg)"
-  local fg="$(palette time_fg)"
+  local bg="${PALETTES[${CURRENT_PALETTE}.time_bg]}"
+  local fg="${PALETTES[${CURRENT_PALETTE}.time_fg]}"
 
   create_pill "${clock_icon} ${current_time}" "$bg" "$fg"
 }
@@ -345,9 +344,8 @@ function build_dir_pill() {
   [[ "${PROMPT_CONFIG[enable_dir_pill]}" != "true" ]] && return
 
   local dir_path="${PWD/#$HOME/${PROMPT_CONFIG[home_icon]}}"
-
-  local bg="$(palette dir_bg)"
-  local fg="$(palette dir_fg)"
+  local bg="${PALETTES[${CURRENT_PALETTE}.dir_bg]}"
+  local fg="${PALETTES[${CURRENT_PALETTE}.dir_fg]}"
 
   create_pill "$dir_path" "$bg" "$fg"
 }
@@ -359,11 +357,11 @@ function build_git_pill() {
   local bg fg
 
   if [[ "$_git_is_dirty" == "1" ]]; then
-    bg="$(palette git_dirty_bg)"
-    fg="$(palette git_dirty_fg)"
+    bg="${PALETTES[${CURRENT_PALETTE}.git_dirty_bg]}"
+    fg="${PALETTES[${CURRENT_PALETTE}.git_dirty_fg]}"
   else
-    bg="$(palette git_clean_bg)"
-    fg="$(palette git_clean_fg)"
+    bg="${PALETTES[${CURRENT_PALETTE}.git_clean_bg]}"
+    fg="${PALETTES[${CURRENT_PALETTE}.git_clean_fg]}"
   fi
 
   create_pill "${vcs_info_msg_0_}" "$bg" "$fg"
@@ -406,7 +404,7 @@ function build_git_state_pill() {
   local content="$state"
   [[ -n "$progress" ]] && content+=" $progress"
 
-  create_pill "$content" "$(palette git_state_bg)" "$(palette git_state_fg)"
+  create_pill "$content" "${PALETTES[${CURRENT_PALETTE}.git_state_bg]}" "${PALETTES[${CURRENT_PALETTE}.git_state_fg]}"
 }
 
 function build_git_metrics_pill() {
@@ -416,12 +414,14 @@ function build_git_metrics_pill() {
   local added="${_git_metrics_cache%%:*}"
   local deleted="${_git_metrics_cache##*:}"
 
-  local bg="$(palette git_metrics_bg)"
-  local fg="$(palette git_metrics_fg)"
-  local green="$(palette git_clean_bg)"
-  local red="$(palette git_dirty_bg)"
+  local bg="${PALETTES[${CURRENT_PALETTE}.git_metrics_bg]}"
+  local fg="${PALETTES[${CURRENT_PALETTE}.git_metrics_fg]}"
+  local green="${PALETTES[${CURRENT_PALETTE}.git_clean_bg]}"
+  local red="${PALETTES[${CURRENT_PALETTE}.git_dirty_bg]}"
 
-  local content="%F{#$green}+${added}%F{#$fg} %F{#$red}-${deleted}%F{#$fg}"
+  local content=""
+  (( added > 0 ))   && content+="%F{#$green}+${added}%F{#$fg}"
+  (( deleted > 0 )) && { [[ -n "$content" ]] && content+=" "; content+="%F{#$red}-${deleted}%F{#$fg}"; }
   create_pill "$content" "$bg" "$fg"
 }
 
@@ -492,11 +492,11 @@ function build_duration_pill() {
     label="${elapsed}s"
   fi
 
-  create_pill "󰔛 $label" "$(palette duration_bg)" "$(palette duration_fg)"
+  create_pill "󰔛 $label" "${PALETTES[${CURRENT_PALETTE}.duration_bg]}" "${PALETTES[${CURRENT_PALETTE}.duration_fg]}"
 }
 
 function build_prompt_char() {
-  local fg="$(palette primary_fg)"
+  local fg="${PALETTES[${CURRENT_PALETTE}.primary_fg]}"
   echo "%F{#$fg}${PROMPT_CONFIG[prompt_char]}  %f"
 }
 
