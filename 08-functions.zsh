@@ -25,6 +25,42 @@ whereami() {
   echo "🕰  Time:      $(strftime '%A, %B %d — %H:%M %p' $EPOCHSECONDS)"
 }
 
+jinfo() {
+  local pids pid ps_field
+  pids=$(jobs -p 2>/dev/null)
+
+  [ -z "$pids" ] && return 0
+
+  if   ps -o command= -p $$ >/dev/null 2>&1; then
+    ps_field="command"
+  elif ps -o cmd=     -p $$ >/dev/null 2>&1; then
+    ps_field="cmd"
+  else
+    ps_field="command"
+  fi
+
+  while IFS= read -r pid; do
+    [ -z "$pid" ] && continue
+
+    printf '=== PID %s ===\n' "$pid"
+
+    ps -o "pid=,${ps_field}=" -p "$pid" 2>/dev/null
+
+  done <<< "$pids"
+}
+
+nswp-clean() {
+  local dir="$HOME/.local/state/nvim/swap"
+
+  if [[ -d "$dir" ]]; then
+    echo "Cleaning Neovim swap files..."
+    rm -f "$dir"/*.swp
+    echo "Done."
+  else
+    echo "No swap directory found."
+  fi
+}
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Application Wrappers
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
