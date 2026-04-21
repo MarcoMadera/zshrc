@@ -99,7 +99,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
   brew install bat fzf zoxide yazi eza fd ripgrep
   "$(brew --prefix)/opt/fzf/install" --all --no-bash --no-fish
 elif [[ -f /etc/arch-release ]]; then
-  sudo pacman -S --needed --noconfirm bat fzf zoxide yazi eza fd ripgrep
+  sudo pacman -Syy --needed --noconfirm --overwrite '*' bat fzf zoxide yazi eza fd ripgrep
 elif command -v apt >/dev/null; then
   sudo apt update
   sudo apt install -y bat fzf zoxide fd-find ripgrep unzip
