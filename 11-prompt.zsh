@@ -13,7 +13,7 @@ typeset -A PROMPT_CONFIG
 PROMPT_CONFIG=(
   "primary_color"       "FF8906"
   "text_color"          "black"
-  "prompt_char"         " 󰮯"
+  "prompt_char"         " 󰮯•"
   "dot_char"            "󰊠"
   "pill_separator"      " • "
   "clock_icon"          "󰥔"
@@ -496,21 +496,77 @@ function build_duration_pill() {
   create_pill "󰔛 $label" "${PALETTES[${CURRENT_PALETTE}.duration_bg]}" "${PALETTES[${CURRENT_PALETTE}.duration_fg]}"
 }
 
+PAC_OPEN=" 󰮯"
+PAC_CLOSED=" ●"
+typeset -g PAC_CURRENT="$PAC_OPEN"
+typeset -g CHOMP_STATE=0
+ANIM_SPEED=0.2
+
+_pacman_tick() {
+    local line
+    if read -u $1 line 2>/dev/null; then
+        if (( CHOMP_STATE == 0 )); then
+            PAC_CURRENT="$PAC_CLOSED"
+            CHOMP_STATE=1
+        else
+            PAC_CURRENT="$PAC_OPEN"
+            CHOMP_STATE=0
+        fi
+        [[ -o zle ]] && zle .reset-prompt 2>/dev/null
+    fi
+    zle -F "$1" _pacman_tick
+}
+
+_manage_animation_state() {
+    local last_status=$?
+
+    if [[ $last_status -eq 0 ]]; then
+        if [[ -n "$_CHOMP_PID" ]]; then
+            kill $_CHOMP_PID 2>/dev/null
+            unset _CHOMP_PID
+        fi
+        PAC_CURRENT="$PAC_OPEN"
+        return
+    fi
+
+    [[ -n "$_CHOMP_PID" ]] && return
+
+    local pipe="/tmp/pacman_pipe_$$"
+    [[ -p "$pipe" ]] || mkfifo "$pipe"
+    exec 8<> "$pipe"
+    rm -f "$pipe"
+    zle -F 8 _pacman_tick
+
+    (
+        while kill -0 $$ 2>/dev/null; do
+            echo "." >&8 2>/dev/null
+            sleep $ANIM_SPEED
+        done
+    ) &!
+    _CHOMP_PID=$!
+}
+
+_pacman_cleanup() {
+    [[ -n "$_CHOMP_PID" ]] && kill $_CHOMP_PID 2>/dev/null
+    exec 8>&- 2>/dev/null
+}
+
+add-zsh-hook precmd _manage_animation_state
+add-zsh-hook zshexit _pacman_cleanup
+
+
 function build_prompt_char() {
-  local last_status=$1
-  
-  local pacman_yellow="f9e2af" 
-  local pacman="${PROMPT_CONFIG[prompt_char]:-󰮯}"
-  local pellet="${PROMPT_CONFIG[dot_char]:-󰊠}"
+    local last_status=$1
+    local pacman_yellow="f9e2af"
+    local pellet="${PROMPT_CONFIG[dot_char]:-󰊠}"
 
-  local pellet_color
-  if [[ $last_status -eq 0 ]]; then
-    pellet_color="%F{#a6e3a1}" # Green for success
-  else
-    pellet_color="%F{#f38ba8}" # Red for error
-  fi
-
-  echo "%F{#$pacman_yellow}${pacman}%f ${pellet_color}${pellet}%f "
+    if [[ $last_status -eq 0 ]]; then
+        echo "%F{#$pacman_yellow}${PAC_OPEN}%f %F{#a6e3a1}${pellet}%f "
+    else
+        local blink_on=$'%{\e[5m%}'
+        local blink_off=$'%{\e[25m%}'
+        echo "%F{#$pacman_yellow}\${PAC_CURRENT}%f %F{#f38ba8}${blink_on}${pellet}${blink_off}%f "    
+    fi
 }
 
 function build_prompt() {
