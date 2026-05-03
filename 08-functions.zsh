@@ -451,4 +451,26 @@ if command -v fzf &>/dev/null; then
       cd "$dir"
     fi
   }
+
+  # Change java version (macOS uses /usr/libexec/java_home, Linux uses update-alternatives)
+  changeJava() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      local versions
+      versions=($(/usr/libexec/java_home -V 2>&1 | awk '/^[[:space:]]*[0-9]/{print $1}'))
+
+      echo "Available Java versions:"
+      select v in "${versions[@]}"; do
+        if [[ -n "$v" ]]; then
+          export JAVA_HOME=$(/usr/libexec/java_home -v "$v")
+          export PATH="$JAVA_HOME/bin:${PATH//:$JAVA_HOME\/bin/}"
+          java --version
+          break
+        fi
+      done
+
+    else
+      sudo update-alternatives --config java
+      java --version
+    fi
+  }
 fi
