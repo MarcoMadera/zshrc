@@ -13,7 +13,8 @@ typeset -A PROMPT_CONFIG
 PROMPT_CONFIG=(
   "primary_color"       "FF8906"
   "text_color"          "black"
-  "prompt_char"         "•  "
+  "prompt_char"         " 󰮯"
+  "dot_char"            "󰊠"
   "pill_separator"      " • "
   "clock_icon"          "󰥔"
   "home_icon"           "  "
@@ -42,7 +43,7 @@ typeset -A PALETTES
 PALETTES[mocha.primary_fg]="fab387"   # Peach
 PALETTES[mocha.time_bg]="313244"      # Surface0
 PALETTES[mocha.time_fg]="cdd6f4"      # Text
-PALETTES[mocha.dir_bg]="94e2d5"       # Teal
+PALETTES[mocha.dir_bg]="b4befe"       # Lavender
 PALETTES[mocha.dir_fg]="1e1e2e"       # Base
 PALETTES[mocha.git_clean_bg]="a6e3a1" # Green
 PALETTES[mocha.git_clean_fg]="1e1e2e" # Base
@@ -496,23 +497,34 @@ function build_duration_pill() {
 }
 
 function build_prompt_char() {
-  local fg="${PALETTES[${CURRENT_PALETTE}.primary_fg]}"
-  echo "%F{#$fg}${PROMPT_CONFIG[prompt_char]}  %f"
+  local last_status=$1
+  
+  local pacman_yellow="f9e2af" 
+  local pacman="${PROMPT_CONFIG[prompt_char]:-󰮯}"
+  local pellet="${PROMPT_CONFIG[dot_char]:-󰊠}"
+
+  local pellet_color
+  if [[ $last_status -eq 0 ]]; then
+    pellet_color="%F{#a6e3a1}" # Green for success
+  else
+    pellet_color="%F{#f38ba8}" # Red for error
+  fi
+
+  echo "%F{#$pacman_yellow}${pacman}%f ${pellet_color}${pellet}%f "
 }
 
 function build_prompt() {
+  local last_exit_status=$?
+
   local separator="${PROMPT_CONFIG[pill_separator]}"
   local pills=()
 
-  # Compute elapsed and clear timer in parent scope — subshells can't do this
   local _elapsed=""
   if [[ -n "$_cmd_start" ]]; then
     _elapsed=$(( EPOCHSECONDS - _cmd_start ))
     _cmd_start=""
   fi
 
-  # Run in main shell so globals (_current_git_dir, _git_metrics_cache, _git_is_dirty) are set
-  # before the pill builders read them. A separate precmd hook breaks the hook chain.
   _refresh_git_metrics
 
   local time_pill=$(build_time_pill)
@@ -527,20 +539,21 @@ function build_prompt() {
   local go_pill=$(build_go_pill)
   local rust_pill=$(build_rust_pill)
   local duration_pill=$(build_duration_pill "$_elapsed")
-  local prompt_char=$(build_prompt_char)
+  
+  local prompt_char=$(build_prompt_char "$last_exit_status")
 
-  [[ -n "$time_pill" ]]     && pills+=("$time_pill")
-  [[ -n "$mode_pill" ]]     && pills+=("$mode_pill")
-  [[ -n "$dir_pill" ]]      && pills+=("$dir_pill")
-  [[ -n "$git_pill" ]]       && pills+=("$git_pill")
-  [[ -n "$git_state_pill" ]]    && pills+=("$git_state_pill")
-  [[ -n "$git_metrics_pill" ]]  && pills+=("$git_metrics_pill")
-  [[ -n "$python_pill" ]]       && pills+=("$python_pill")
-  [[ -n "$node_pill" ]]     && pills+=("$node_pill")
-  [[ -n "$java_pill" ]]     && pills+=("$java_pill")
-  [[ -n "$go_pill" ]]       && pills+=("$go_pill")
-  [[ -n "$rust_pill" ]]     && pills+=("$rust_pill")
-  [[ -n "$duration_pill" ]] && pills+=("$duration_pill")
+  [[ -n "$time_pill" ]]        && pills+=("$time_pill")
+  [[ -n "$mode_pill" ]]        && pills+=("$mode_pill")
+  [[ -n "$dir_pill" ]]         && pills+=("$dir_pill")
+  [[ -n "$git_pill" ]]         && pills+=("$git_pill")
+  [[ -n "$git_state_pill" ]]   && pills+=("$git_state_pill")
+  [[ -n "$git_metrics_pill" ]] && pills+=("$git_metrics_pill")
+  [[ -n "$python_pill" ]]      && pills+=("$python_pill")
+  [[ -n "$node_pill" ]]        && pills+=("$node_pill")
+  [[ -n "$java_pill" ]]        && pills+=("$java_pill")
+  [[ -n "$go_pill" ]]          && pills+=("$go_pill")
+  [[ -n "$rust_pill" ]]        && pills+=("$rust_pill")
+  [[ -n "$duration_pill" ]]    && pills+=("$duration_pill")
   
   local top_line=""
   for pill in "${pills[@]}"; do
