@@ -20,8 +20,11 @@ export SEQFILE="${XDG_STATE_HOME}/quickshell/user/generated/terminal/sequences.t
 export BUN_INSTALL="$HOME/.bun"
 export QML2_IMPORT_PATH="/usr/lib/qt6/qml:$QML2_IMPORT_PATH"
 export QT_QML_GENERATE_QMLLS_INI=ON
-export Qt6_DIR="$HOME/Qt/6.10.1/macos/lib/cmake/Qt6"
-export QMAKE="$HOME/Qt/6.10.1/macos/bin/qmake"
+if [[ "$OSTYPE" == darwin* ]]; then
+  export Qt6_DIR="$HOME/Qt/6.10.1/macos/lib/cmake/Qt6"
+  export QMAKE="$HOME/Qt/6.10.1/macos/bin/qmake"
+  export CXXFLAGS="-include arm_acle.h"
+fi
 export HYPRPM_USER=1
 export KITTY_CONFIG_DIRECTORY="$HOME/.config/kitty"
 
