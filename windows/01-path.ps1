@@ -40,8 +40,21 @@ $env:PATH = $final -join $sep
 # hook the shell; nvm-windows just swaps a symlink and needs nothing here.
 $_fnm = Get-PwshRcTool 'fnm'
 if ($_fnm) {
-  $_init = Get-PwshRcCachedInit 'fnm' $_fnm { fnm env --use-on-cd --shell power-shell }
+  # -PathSensitive because `fnm env` prints an assignment of the *entire*
+  # $env:PATH. Cached against the binary alone, any later PATH change would be
+  # erased on every launch by a snapshot taken before it existed.
+  $_init = Get-PwshRcCachedInit 'fnm' $_fnm { fnm env --use-on-cd --shell power-shell } -PathSensitive
   if ($_init) { . $_init }
+
+  # The cached snapshot also names a multishell dir that existed when it was
+  # generated. That dir is a junction to fnm's `default` alias, so it normally
+  # keeps resolving — but if it is ever cleaned up, node silently disappears.
+  # Regenerate once rather than leaving a shell with no node.
+  if ($env:FNM_MULTISHELL_PATH -and -not (Test-Path -LiteralPath $env:FNM_MULTISHELL_PATH)) {
+    Remove-Item -LiteralPath $_init -Force -ErrorAction SilentlyContinue
+    $_init = Get-PwshRcCachedInit 'fnm' $_fnm { fnm env --use-on-cd --shell power-shell } -PathSensitive
+    if ($_init) { . $_init }
+  }
 }
 
 # ━━━━━━━ PATH-dependent environment ━━━━━━━━━

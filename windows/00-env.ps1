@@ -23,6 +23,7 @@ $global:PWSHRC_CONFIG = @{
   EnableSurround    = $true   # ds/cs/ys key handlers (Vi command mode only)
   EnableModePill    = $true
   EnableTerminalIcons = $true
+  EnableMsvcEnv     = $true   # cl.exe/INCLUDE/LIB on PATH (~80ms); see 09-integrations.ps1
 }
 
 $env:LANG = 'en_US.UTF-8'
@@ -80,11 +81,19 @@ function global:Test-PwshRcTool {
 # Spawning them costs ~50-80ms each at every launch, so the generated script is
 # cached on disk and dot-sourced instead. The cache filename embeds the binary's
 # write time, so upgrading the tool regenerates it automatically.
+#
+# -PathSensitive additionally keys the cache on the current $env:PATH. Some
+# tools (fnm) bake a whole PATH snapshot into what they print. Keyed on the
+# binary alone, such a cache goes stale the moment anything else edits PATH —
+# installing a portable winget package, for instance, appends
+# %LOCALAPPDATA%\Microsoft\WinGet\Links — and since the binary has not changed,
+# it stays stale forever and the new tool is invisible in every shell.
 function global:Get-PwshRcCachedInit {
   param(
     [Parameter(Mandatory)][string]$Name,
     [Parameter(Mandatory)][string]$ExePath,
-    [Parameter(Mandatory)][scriptblock]$Generate
+    [Parameter(Mandatory)][scriptblock]$Generate,
+    [switch]$PathSensitive
   )
 
   $cacheDir = Join-Path $env:XDG_CACHE_HOME 'pwsh\init'
@@ -95,7 +104,21 @@ function global:Get-PwshRcCachedInit {
   try { $stamp = [System.IO.File]::GetLastWriteTimeUtc($ExePath).Ticks }
   catch { $stamp = 0 }
 
-  $cacheFile = Join-Path $cacheDir "$Name.$stamp.ps1"
+  $key = "$stamp"
+  if ($PathSensitive) {
+    # A content hash, not a security boundary. String.GetHashCode() is
+    # deliberately avoided: .NET randomises it per process, so it would miss
+    # the cache on every launch.
+    $md5 = [System.Security.Cryptography.MD5]::Create()
+    try {
+      $bytes = $md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes([string]$env:PATH))
+      $key = "$stamp.$(-join ($bytes[0..3] | ForEach-Object { $_.ToString('x2') }))"
+    } finally {
+      $md5.Dispose()
+    }
+  }
+
+  $cacheFile = Join-Path $cacheDir "$Name.$key.ps1"
   if (Test-Path -LiteralPath $cacheFile) { return $cacheFile }
 
   # Binary changed (or first run) — drop older generations for this tool

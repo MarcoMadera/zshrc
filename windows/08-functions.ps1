@@ -54,12 +54,21 @@ function global:jinfo {
 }
 
 function global:nswp-clean {
-  $dir = Join-Path $env:LOCALAPPDATA 'nvim-data\swap'
-  if (-not (Test-Path -LiteralPath $dir)) {
-    $dir = Join-Path $env:XDG_STATE_HOME 'nvim\swap'
+  # Swap lives under Neovim's *state* dir, which on Windows is named
+  # "nvim-data" (not "nvim") and honours XDG_STATE_HOME when it is set.
+  # %LOCALAPPDATA%\nvim-data is the data dir, not the state dir, so it is
+  # listed last and only helps when the XDG vars are unset.
+  $dir = $null
+  $candidates = @(
+    (Join-Path $env:XDG_STATE_HOME 'nvim-data\swap')
+    (Join-Path $env:XDG_STATE_HOME 'nvim\swap')
+    (Join-Path $env:LOCALAPPDATA 'nvim-data\swap')
+  )
+  foreach ($c in $candidates) {
+    if ($c -and (Test-Path -LiteralPath $c)) { $dir = $c; break }
   }
 
-  if (Test-Path -LiteralPath $dir) {
+  if ($dir) {
     Write-Host 'Cleaning Neovim swap files...'
     Get-ChildItem -LiteralPath $dir -Filter '*.swp' -File -ErrorAction SilentlyContinue |
       Remove-Item -Force
